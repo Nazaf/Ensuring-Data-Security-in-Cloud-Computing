@@ -1,0 +1,743 @@
+package Client;
+
+import java.awt.Desktop;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.util.Locale;
+import java.util.Properties;
+import java.util.ResourceBundle;
+
+import javax.swing.*;
+import java.awt.*;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+
+public class Client extends javax.swing.JFrame
+{
+	private static final long serialVersionUID = -8199933008060566405L;
+	private String ServerNameIPAddress = "localhost";
+	private int ServerPortNo=8888;
+	private Socket clientSocket = null;
+	private OutputStream outToServer = null;
+	private InputStream inFromServer = null;
+	private File selectedFile = null;
+	private byte LoginCount;
+	private RSA rsa = new RSA();
+	//Txt only filter. Not used.
+	/*class TextFilter extends javax.swing.filechooser.FileFilter
+    {
+        public boolean accept(File f) 
+        {
+            boolean accept = f.isDirectory();
+            if(!accept)
+            {
+                String suffix = getSuffix(f);
+                if(suffix != null) 
+                    accept = suffix.equals("txt");
+            }
+            
+            return accept;
+        }
+        
+        public String getDescription()
+        {
+            return "Text Files";
+        }
+        
+        private String getSuffix(File f)
+        {
+            String s = f.getPath(), suffix = null;
+            int i = s.lastIndexOf('.');
+            if(i > 0 && i < s.length() - 1)
+            suffix = s.substring(i+1).toLowerCase();
+            return suffix;
+        }
+    }*/
+    
+
+    
+    public Client() 
+    {
+    	//Load configuration like server ip and port no
+    	Properties configProps= new Properties();
+    	try {
+    		InputStream configFileInputStream=new FileInputStream("ClientConfiguration.properties");
+    		if(configFileInputStream!=null){
+    			configProps.load(configFileInputStream);
+			
+    			ServerNameIPAddress=configProps.getProperty("ServerNameIPAddress");
+    			ServerPortNo=Integer.parseInt(configProps.getProperty("ServerPortNo"));
+    		}
+    		else{
+    			System.out.println("Could not read configuration form file ClientConfiguration.properties. Check if file has been packaged.");
+    		}
+	    	System.out.println(" Server Connection ->" + ServerNameIPAddress + ":" + ServerPortNo);
+	        initComponents();
+	        this.setTitle("Client - Login");
+		} catch (IOException e) {
+			System.out.println(e.toString() + e.getMessage() + " Check if ClientConfiguration.properties file has been packaged.");
+			e.printStackTrace();
+		}
+    }
+
+    @SuppressWarnings("unchecked")
+    
+    private void initComponents() {
+        java.awt.GridBagConstraints gridBagConstraints;
+
+        fileManagementFrame = new javax.swing.JFrame("Client - Manage Files");
+        jFrame1 = new javax.swing.JFrame();
+		uploadRadioButton = new javax.swing.JRadioButton();
+        displayRadioButton = new javax.swing.JRadioButton();
+        uploadButton = new javax.swing.JButton();
+        browseButton = new javax.swing.JButton();
+        filesComboBox = new javax.swing.JComboBox();
+        downloadButton = new javax.swing.JButton();
+        deleteButton = new javax.swing.JButton();
+        verifyButton = new javax.swing.JButton();
+        fileStatusLabel = new javax.swing.JLabel();
+        exitButton = new javax.swing.JButton();
+		logoutButton = new javax.swing.JButton();
+        titleLabel1 = new javax.swing.JLabel();
+        jLabel1 = new javax.swing.JLabel();
+        buttonGroup1 = new javax.swing.ButtonGroup();
+        jToggleButton1 = new javax.swing.JToggleButton();
+        usernameLabel = new javax.swing.JLabel();
+        usernameTextfield = new javax.swing.JTextField();
+        passwordLabel = new javax.swing.JLabel();
+        loginButton = new javax.swing.JButton();
+        passwordField = new javax.swing.JPasswordField();
+        titleLabel2 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+
+        fileManagementFrame.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+        fileManagementFrame.setResizable(false);
+
+        buttonGroup1.add(uploadRadioButton);
+        uploadRadioButton.setFont(new java.awt.Font("Tahoma", 1, 11));
+        uploadRadioButton.setSelected(true);
+        uploadRadioButton.setText("Upload a file");
+        uploadRadioButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                uploadRadioButtonActionPerformed(evt);
+            }
+        });
+
+        buttonGroup1.add(displayRadioButton);
+        displayRadioButton.setFont(new java.awt.Font("Tahoma", 1, 11));
+        displayRadioButton.setText("Files in the Cloud");
+        displayRadioButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                displayRadioButtonActionPerformed(evt);
+            }
+        });
+
+        uploadButton.setText("Upload");
+        uploadButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                uploadButtonActionPerformed(evt);
+            }
+        });
+
+        browseButton.setText("Browse");
+        browseButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                browseButtonActionPerformed(evt);
+            }
+        });
+
+        filesComboBox.setEnabled(false);
+
+        downloadButton.setText("Download");
+        downloadButton.setEnabled(false);
+        downloadButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                downloadButtonActionPerformed(evt);
+            }
+        });
+
+        deleteButton.setText("Delete");
+        deleteButton.setEnabled(false);
+        deleteButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                deleteButtonActionPerformed(evt);
+            }
+        });
+
+        verifyButton.setText("Verify & Correct");
+        verifyButton.setEnabled(false);
+        verifyButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                verifyButtonActionPerformed(evt);
+            }
+        });
+
+        logoutButton.setText("Logout");
+        logoutButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                logoutButtonActionPerformed(evt);
+            }
+        });
+
+		exitButton.setText("Exit");
+        exitButton.setEnabled(true);
+        exitButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                exitButtonActionPerformed(evt);
+            }
+        });
+
+        jLabel1.setFont(new java.awt.Font("Arial", 1, 14));
+        jLabel1.setText("Client");
+
+        javax.swing.GroupLayout jFrame1Layout = new javax.swing.GroupLayout(fileManagementFrame.getContentPane());
+        fileManagementFrame.getContentPane().setLayout(jFrame1Layout);
+        jFrame1Layout.setHorizontalGroup(
+            jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jFrame1Layout.createSequentialGroup()
+                .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jFrame1Layout.createSequentialGroup()
+                        .addGap(112, 112, 112)
+                        .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jFrame1Layout.createSequentialGroup()
+                                .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(uploadRadioButton)
+                                    .addComponent(fileStatusLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(64, 64, 64)
+                                .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(filesComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 264, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(displayRadioButton)))
+                            .addGroup(jFrame1Layout.createSequentialGroup()
+                                .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                    .addComponent(logoutButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(browseButton, javax.swing.GroupLayout.DEFAULT_SIZE, 79, Short.MAX_VALUE))
+                                .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(jFrame1Layout.createSequentialGroup()
+                                        .addGap(10, 10, 10)
+                                        .addComponent(uploadButton, javax.swing.GroupLayout.PREFERRED_SIZE, 79, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addGap(64, 64, 64)
+                                        .addComponent(downloadButton)
+                                        .addGap(6, 6, 6)
+                                        .addComponent(deleteButton, javax.swing.GroupLayout.PREFERRED_SIZE, 79, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jFrame1Layout.createSequentialGroup()
+                                        .addGap(153, 153, 153)
+                                        .addComponent(verifyButton, javax.swing.GroupLayout.PREFERRED_SIZE, 164, javax.swing.GroupLayout.PREFERRED_SIZE))))))
+                    .addGroup(jFrame1Layout.createSequentialGroup()
+                        .addGap(283, 283, 283)
+                        .addComponent(jLabel1))
+                    .addGroup(jFrame1Layout.createSequentialGroup()))     
+                .addContainerGap(140, Short.MAX_VALUE))
+        );
+        jFrame1Layout.setVerticalGroup(
+            jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jFrame1Layout.createSequentialGroup()                
+                .addGap(130, 130, 130)
+                .addComponent(jLabel1)
+                .addGap(33, 33, 33)
+                .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(uploadRadioButton)
+                    .addComponent(displayRadioButton))
+                .addGap(37, 37, 37)
+                .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(fileStatusLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jFrame1Layout.createSequentialGroup()
+                        .addGap(1, 1, 1)
+                        .addComponent(filesComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addGap(31, 31, 31)
+                .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(browseButton)
+                    .addComponent(uploadButton)
+                    .addComponent(downloadButton)
+                    .addComponent(deleteButton))
+                .addGap(34, 34, 34)
+                .addGroup(jFrame1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(verifyButton)
+                    .addComponent(logoutButton))
+                .addContainerGap(130, Short.MAX_VALUE))
+        );
+
+        jToggleButton1.setText("jToggleButton1");
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setPreferredSize(new java.awt.Dimension(640, 480));
+        setResizable(false);
+        getContentPane().setLayout(null);
+
+		JPanel jpan = new JPanel();
+		jpan.setBackground(new java.awt.Color(0, 116, 232));
+	    jpan.setBorder(new javax.swing.border.EtchedBorder());
+		jpan.setLayout(null);
+
+		JLabel lock = new JLabel();
+        ImageIcon i1 = new ImageIcon("images/JpgLock.GIF");
+        lock.setIcon(i1);
+		lock.setBounds(new Rectangle(5, 35, 30, 30));
+		lock.setBackground(new java.awt.Color(255,255,255));
+		jpan.add(lock);
+
+        usernameLabel.setFont(new java.awt.Font("Tahoma", 1, 14));
+        usernameLabel.setText("Username");
+		usernameLabel.setForeground(new java.awt.Color(255,255,255));
+		jpan.add(usernameLabel);
+		usernameLabel.setBounds(50, 40, 90, 30);
+        
+       
+        jpan.add(usernameTextfield);
+		usernameTextfield.setBounds(140, 40, 150, 30);
+
+		JLabel key = new JLabel();
+        ImageIcon i2 = new ImageIcon("images/JpgPassword.GIF");
+		key.setBackground(new java.awt.Color(0,0,0));
+		key.setForeground(new java.awt.Color(255,255,255));
+		key.setIcon(i2);
+		key.setBounds(new Rectangle(5, 85, 30, 30));
+		key.setForeground(new java.awt.Color(255,255,255));
+		jpan.add(key);
+
+        passwordLabel.setFont(new java.awt.Font("Tahoma", 1, 14));
+        passwordLabel.setText("Password");
+		passwordLabel.setForeground(new java.awt.Color(255,255,255));
+        jpan.add(passwordLabel);
+        passwordLabel.setBounds(50, 90, 90, 30);
+
+        loginButton.setText("Login");
+        loginButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                loginButtonActionPerformed(evt);
+            }
+        });
+
+		 jpan.add(loginButton);
+		loginButton.setBounds(50, 150, 80, 27);
+
+		jpan.add(exitButton);
+		exitButton.setBounds(150, 150, 80, 27);
+
+        jpan.add(passwordField);
+		passwordField.setBounds(140, 91, 150, 30);
+
+        jLabel2.setFont(new java.awt.Font("Arial", 1, 18));
+        jLabel2.setText("Client");
+        getContentPane().add(jLabel2);
+		jLabel2.setBounds(280,130,400,65);
+
+		getContentPane().add(jpan);
+		jpan.setBounds(150, 200, 310, 200);
+
+		ImageIcon titlepic = new ImageIcon("images/title.JPG");
+        titleLabel1.setIcon(titlepic);
+		this.add(titleLabel1);
+		titleLabel1.setBounds(0,0,640,120);
+
+		JLabel imageLabel = new JLabel();
+        ImageIcon ii = new ImageIcon("images/bg.JPG");
+        imageLabel.setIcon(ii);
+        imageLabel.setBounds(0,0,640,480);
+        imageLabel.setBackground(new java.awt.Color(0, 116, 232));
+        this.getContentPane().add(imageLabel);
+
+        pack();
+    }
+
+    private void loginButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        try
+        {
+            String Username = usernameTextfield.getText();
+            String Password = new String(passwordField.getPassword());
+            String commandStr = "LOGIN" + "|" + Username + "|" + Password;
+            String serverResponse;
+
+            if(LoginCount == 0)
+            {
+                clientSocket = new Socket(ServerNameIPAddress, ServerPortNo);
+                outToServer = clientSocket.getOutputStream();
+                inFromServer = clientSocket.getInputStream();
+            }
+            CommProtocolHelper.writeCommand(outToServer, commandStr);
+            System.out.println("CMD " + commandStr);
+            serverResponse = rsa.decrypt(CommProtocolHelper.readLineFromStream(inFromServer));
+           
+            LoginCount++;
+            
+            if (serverResponse.equalsIgnoreCase("SUCCESSFUL"))
+            {
+                this.setVisible(false);
+                fileManagementFrame.setSize(640, 480);
+                fileManagementFrame.setLocation(350, 200);
+                fileManagementFrame.setVisible(true);
+
+				JPanel jpan = new JPanel();
+				jpan.setBackground(new java.awt.Color(0, 116, 232));
+			    jpan.setBorder(new javax.swing.border.EtchedBorder());
+				jpan.setLayout(null);
+
+				fileManagementFrame.add(titleLabel1);
+				titleLabel1.setBounds(0,0,640,120);
+
+				JLabel imageLabel = new JLabel();
+				ImageIcon ii = new ImageIcon("images/bg.JPG");
+				imageLabel.setIcon(ii);
+				jpan.add(imageLabel);
+				imageLabel.setBounds(0,0,640,480);
+
+				fileManagementFrame.getContentPane().add(jpan);
+				jpan.setBounds(0,0,640,480);
+
+				pack();
+            }
+            else
+            {
+                if(LoginCount < 3)
+                    JOptionPane.showMessageDialog(this, "Wrong username or password!!!");
+                else
+                {
+                    JOptionPane.showMessageDialog(this, "You have exceeded maximum tries.please try again later!!");
+                    outToServer.close();
+                    inFromServer.close();
+                    clientSocket.close();
+                    System.exit(1);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+        }   
+    }
+
+     private void uploadRadioButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        browseButton.setEnabled(true);
+        uploadButton.setEnabled(true);
+        filesComboBox.setEnabled(false);
+        downloadButton.setEnabled(false);
+        deleteButton.setEnabled(false);
+        verifyButton.setEnabled(false);
+        verifyButton.setEnabled(false);
+        fileStatusLabel.setText("");
+        selectedFile = null;
+    }
+
+    private void browseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_browseButtonActionPerformed
+        selectedFile = null;
+        try
+        {
+            JFileChooser fc = new JFileChooser(".");
+            fc.setAcceptAllFileFilterUsed(true);
+            //setFileFilter(new TextFilter());
+            fc.showOpenDialog(this);
+            selectedFile = fc.getSelectedFile();
+            fileStatusLabel.setText(selectedFile.getName() + " selected!");
+        }
+        catch(Exception ex)
+        {
+        	ex.printStackTrace();
+        }
+    }
+    
+    private void displayRadioButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        browseButton.setEnabled(false);
+        uploadButton.setEnabled(false);
+        filesComboBox.setEnabled(true);
+        downloadButton.setEnabled(true);
+        deleteButton.setEnabled(true);
+        verifyButton.setEnabled(true);
+        verifyButton.setEnabled(true);
+        filesComboBox.removeAllItems();
+        fileStatusLabel.setText("");
+        selectedFile = null;
+        
+        try
+        {
+            String commandStr = "GETFILENAMES";
+            String serverResponse;
+
+            CommProtocolHelper.writeCommand(outToServer, commandStr);
+            
+            serverResponse = rsa.decrypt(CommProtocolHelper.readLineFromStream(inFromServer));
+            System.out.println("CMD " + commandStr + "\n\tResponse "+serverResponse);
+            String[] Tokens;
+            String delimiter = "\\|";
+
+            Tokens = serverResponse.split(delimiter);
+
+            if(serverResponse=="" || Tokens[0].equals("FAILED")){
+	            JOptionPane.showMessageDialog(this,
+	    				"File list failed. " + serverResponse);
+	            return;
+            }
+        	for(int i = 1; i < Tokens.length; i++)
+                filesComboBox.addItem(Tokens[i]);
+    	
+        }
+        catch (Exception ex)
+        {
+        	JOptionPane.showMessageDialog(this,
+        			"Error:" + ex.getMessage());
+        	ex.printStackTrace();
+        }        
+    }
+
+
+    private void downloadButtonActionPerformed(java.awt.event.ActionEvent evt) {
+		try {
+			String fileNameToDownload = filesComboBox.getSelectedItem()
+					.toString();
+			String commandStr = "DOWNLOAD" + "|" + fileNameToDownload;
+			String serverResponse;
+
+			CommProtocolHelper.flushInputStream(inFromServer);
+			CommProtocolHelper.writeCommand(outToServer, commandStr);
+			System.out.println("CMD " + commandStr);
+
+			// process response from server
+			serverResponse = rsa.decrypt(CommProtocolHelper
+					.readLineFromStream(inFromServer));
+			System.out.println("Response : " + serverResponse);
+
+			String[] serverRequestCMDTokens = serverResponse.split("\\|");
+			String ResponseKeyWord = serverRequestCMDTokens[0];
+
+			if (ResponseKeyWord.startsWith("FAILED")) {
+				JOptionPane.showMessageDialog(this,
+						"File download failed! \nError:"
+								+ serverRequestCMDTokens[1]);
+				return;
+			}
+			if (ResponseKeyWord.equalsIgnoreCase("CONTENT-LENGTH")) {
+
+				// Create a file output stream to write to a file on client side
+				// using data coming from server (save file on client)
+				FileOutputStream localFileOutputStream = new FileOutputStream(
+						fileNameToDownload);
+
+				// Read data from the Server and write to the local file on the
+				// client
+				// The amount of data read from the server is based on the data
+				// size indicated by the
+				// server in the CONTENT-LENGTH response header.
+
+				int contentLength = Integer.parseInt(serverRequestCMDTokens[1]);
+				int dataRead = 0;
+				byte[] buff = new byte[1000]; // buffer for the data chunk read
+												// off the client input socket
+												// stream
+
+				System.out.println(" CMD: DOWNLOAD file:" + fileNameToDownload	+ " Size:" + contentLength + "\n Downloading...");
+				while (dataRead < contentLength) {
+					int bytesRead = inFromServer.read(buff, 0,	Math.min(buff.length, (contentLength - dataRead)));
+
+					localFileOutputStream.write(buff, 0, bytesRead);
+
+					dataRead = dataRead + bytesRead;
+					System.out.print(dataRead + " .. ");
+				}
+				System.out.println("Done");
+				localFileOutputStream.close();
+				
+				serverResponse = rsa.decrypt(CommProtocolHelper.readLineFromStream(inFromServer));
+				System.out.println("Response : " + serverResponse);
+
+				JOptionPane.showMessageDialog(this,
+						"File downloaded successfully!");
+				
+				Desktop.getDesktop().open(new File(filesComboBox.getSelectedItem().toString()));
+			} else {
+				JOptionPane.showMessageDialog(this,"File download failed!\n Error: Unexpected response from server");
+			}
+		} catch (Exception ex) {
+			JOptionPane.showMessageDialog(this,"File download failed!\n Error:" + ex.getMessage());
+			ex.printStackTrace();
+		}       
+    }
+
+    private void uploadButtonActionPerformed(java.awt.event.ActionEvent evt) {
+      
+        if(selectedFile != null)
+        {        
+              BufferedInputStream localFileInputStream;
+           try
+            {
+        	   //Upload command. Send filename and file size
+            
+                String commandStr = "UPLOAD" + "|" + selectedFile.getName()+ "|" + selectedFile.length();
+                String serverResponse;
+               
+                //Write command for upload to server
+                CommProtocolHelper.writeCommand(outToServer, commandStr);
+                System.out.println("CMD " + commandStr);
+                
+                //Read file to be uploaded and Send file data to the Server
+                localFileInputStream = new BufferedInputStream(new FileInputStream(selectedFile));
+                byte[] buff=new byte[1000];
+                int bytesRead=0;
+                while ((bytesRead=localFileInputStream.read(buff)) != -1)
+                	outToServer.write(buff, 0, bytesRead);
+                localFileInputStream.close();
+                
+                System.out.println(" File " + selectedFile.getAbsolutePath() + "\\" + selectedFile.getName()+ " sent to server");
+                //Await response from Server
+                serverResponse = rsa.decrypt(CommProtocolHelper.readLineFromStream(inFromServer));
+
+                if(serverResponse.equalsIgnoreCase("SUCCESSFUL"))
+                    JOptionPane.showMessageDialog(this, "File uploaded successfully!");
+                else
+                    JOptionPane.showMessageDialog(this, "File upload failed, try again!\n\tError:" + serverResponse);            
+            }
+            catch (Exception ex)
+            {
+            	JOptionPane.showMessageDialog(this, "File upload failed, try again!" + ex.getMessage());  
+            	ex.printStackTrace();
+            }
+            
+            fileStatusLabel.setText("");
+            selectedFile = null;
+        }
+        else
+            JOptionPane.showMessageDialog(this, "No file selected!");
+    }
+
+    private void deleteButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        try
+        {
+            String commandStr = "DELETE" + "|" + filesComboBox.getSelectedItem().toString();
+            String serverResponse;
+
+            CommProtocolHelper.writeCommand(outToServer, commandStr);
+            System.out.println("CMD " + commandStr);
+            serverResponse = rsa.decrypt(CommProtocolHelper.readLineFromStream(inFromServer));
+            
+            if(serverResponse.equalsIgnoreCase("SUCCESSFUL"))
+            {
+                String DeletedItem = filesComboBox.getSelectedItem().toString();
+                filesComboBox.removeItem(DeletedItem);
+                JOptionPane.showMessageDialog(this, "File deleted successfully!");
+            }
+            else
+                JOptionPane.showMessageDialog(this, "File deletion failed, try again!\n\tError:"+serverResponse);           
+        }
+        catch (Exception e)
+        {
+        }            
+    }
+
+    private void verifyButtonActionPerformed(java.awt.event.ActionEvent evt) {
+         	
+        try 
+        {
+            String commandStr = "VERIFY"+ "|" + filesComboBox.getSelectedItem().toString();
+            String serverResponse;
+
+            CommProtocolHelper.writeCommand(outToServer, commandStr);
+            System.out.println("CMD " + commandStr);
+            serverResponse = rsa.decrypt(CommProtocolHelper.readLineFromStream(inFromServer));
+            
+            if(serverResponse.equalsIgnoreCase("FILE OK"))
+                JOptionPane.showMessageDialog(this, "No problems were found in the file!");
+            else if (serverResponse.equalsIgnoreCase("FILE CORRECTED"))
+                JOptionPane.showMessageDialog(this, "File had errors but was recovered successfully!");
+            else
+            	JOptionPane.showMessageDialog(this, "Verification failed! \n\tError:"+serverResponse);
+        }
+        catch (Exception ex)
+        {
+        	JOptionPane.showMessageDialog(this, "File recovery had errors. \n\tError:"+ ex.getMessage());
+        	ex.printStackTrace();
+        }          
+    }
+
+    private void logoutButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        try
+        {
+            String commandStr = "LOGOFF";
+            CommProtocolHelper.writeCommand(outToServer, commandStr);
+            System.out.println("CMD " + commandStr);
+            outToServer.close();
+            inFromServer.close();
+            clientSocket.close();
+            
+            fileManagementFrame.dispose();
+            java.awt.EventQueue.invokeLater(new Runnable() {
+
+            public void run() {
+                Client client=new Client();
+                client.setVisible(true);
+                client.setLocation(350, 200);
+                
+                
+            }
+        });
+        }
+        catch (Exception ex)
+        {
+        	ex.printStackTrace();
+        	System.exit(0);
+        }        
+    }
+
+	 private void exitButtonActionPerformed(java.awt.event.ActionEvent evt) 
+	 {
+            System.exit(0);              
+     }
+    
+    public static void main(String args[]) {
+       
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(Client.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(Client.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(Client.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(Client.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+       
+        java.awt.EventQueue.invokeLater(new Runnable() {
+
+            public void run() {
+                Client client=new Client();
+                client.setVisible(true);
+                client.setLocation(350, 200);
+                
+                
+            }
+        });
+    }
+   
+    private javax.swing.JButton browseButton;
+    private javax.swing.ButtonGroup buttonGroup1;
+    private javax.swing.JButton deleteButton;
+    private javax.swing.JRadioButton displayRadioButton;
+    private javax.swing.JButton downloadButton;
+    private javax.swing.JButton exitButton;
+	private javax.swing.JButton logoutButton;
+    private javax.swing.JLabel fileStatusLabel;
+    private javax.swing.JComboBox filesComboBox;
+    private javax.swing.JFrame fileManagementFrame;
+    private javax.swing.JFrame jFrame1;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JToggleButton jToggleButton1;
+    private javax.swing.JButton loginButton;
+    private javax.swing.JPasswordField passwordField;
+    private javax.swing.JLabel passwordLabel;
+    private javax.swing.JLabel titleLabel1;
+    private javax.swing.JLabel titleLabel2;
+    private javax.swing.JButton uploadButton;
+    private javax.swing.JRadioButton uploadRadioButton;
+    private javax.swing.JLabel usernameLabel;
+    private javax.swing.JTextField usernameTextfield;
+    private javax.swing.JButton verifyButton;
+    
+}
